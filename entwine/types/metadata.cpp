@@ -10,6 +10,7 @@
 
 #include <entwine/formats/cesium/settings.hpp>
 #include <entwine/tree/manifest.hpp>
+#include <entwine/types/delta.hpp>
 #include <entwine/types/format.hpp>
 #include <entwine/types/metadata.hpp>
 #include <entwine/types/reprojection.hpp>
@@ -51,6 +52,7 @@ Metadata::Metadata(
         const Format& format,
         const Reprojection* reprojection,
         const Subset* subset,
+        const Delta* delta,
         const Transformation* transformation,
         const cesium::Settings* cesiumSettings)
     : m_boundsConforming(makeUnique<Bounds>(boundsConforming))
@@ -63,6 +65,7 @@ Metadata::Metadata(
     , m_format(makeUnique<Format>(format))
     , m_reprojection(maybeClone(reprojection))
     , m_subset(maybeClone(subset))
+    , m_delta(maybeClone(delta))
     , m_transformation(maybeClone(transformation))
     , m_cesiumSettings(maybeClone(cesiumSettings))
     , m_errors()
@@ -106,6 +109,11 @@ Metadata::Metadata(const arbiter::Endpoint& ep, const std::size_t* subsetId)
         }
     }
 
+    if (Delta::existsIn(meta))
+    {
+        m_delta = makeUnique<Delta>(meta["delta"]);
+    }
+
     if (meta.isMember("formats") && meta["formats"].isMember("cesium"))
     {
         m_cesiumSettings =
@@ -131,6 +139,7 @@ Metadata::Metadata(const Json::Value& json)
             makeUnique<Reprojection>(json["reprojection"]) : nullptr)
     , m_subset(json.isMember("subset") ?
             makeUnique<Subset>(*m_bounds, json["subset"]) : nullptr)
+    , m_delta(Delta::existsIn(json) ? makeUnique<Delta>(json) : nullptr)
     , m_transformation(json.isMember("transformation") ?
             makeUnique<Transformation>() : nullptr)
     , m_cesiumSettings(
@@ -159,6 +168,7 @@ Metadata::Metadata(const Metadata& other)
     , m_format(makeUnique<Format>(other.format()))
     , m_reprojection(maybeClone(other.reprojection()))
     , m_subset(maybeClone(other.subset()))
+    , m_delta(maybeClone(other.delta()))
     , m_transformation(maybeClone(other.transformation()))
     , m_cesiumSettings(maybeClone(other.cesiumSettings()))
     , m_errors(other.errors())
@@ -179,6 +189,13 @@ Json::Value Metadata::toJson() const
 
     if (m_reprojection) json["reprojection"] = m_reprojection->toJson();
     if (m_subset) json["subset"] = m_subset->toJson();
+
+    if (m_delta)
+    {
+        json["scale"] = m_delta->scale().toJsonArray();
+        json["offset"] = m_delta->offset().toJsonArray();
+    }
+
     if (m_transformation)
     {
         for (const double v : *m_transformation)

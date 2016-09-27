@@ -27,5 +27,8 @@ static constexpr Origin invalidOrigin = std::numeric_limits<Origin>::max();
 
 using TileFunction = std::function<void(pdal::PointView& view, Bounds bounds)>;
 
+using Offset = Point;
+using Scale = Point;
+
 } // namespace entwine
 

@@ -10,6 +10,8 @@
 
 #include <entwine/util/inference.hpp>
 
+#include <limits>
+
 #include <entwine/tree/config-parser.hpp>
 #include <entwine/types/reprojection.hpp>
 #include <entwine/types/pooled-point-table.hpp>
@@ -177,7 +179,11 @@ void Inference::go()
     {
         throw std::runtime_error("No point cloud files found");
     }
-    else if (!numPoints())
+
+    aggregate();
+    makeSchema();
+
+    if (!numPoints())
     {
         throw std::runtime_error("Zero points found");
     }
@@ -286,6 +292,27 @@ void Inference::add(const std::string localPath, FileInfo& fileInfo)
     {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
+            if (preview->scale)
+            {
+                const auto& scale(*preview->scale);
+
+                if (!scale.x || !scale.y || !scale.z)
+                {
+                    throw std::runtime_error(
+                            "Invalid scale at " + fileInfo.path());
+                }
+
+                if (!m_delta)
+                {
+                    m_delta = makeUnique<Delta>(scale, Offset(0, 0, 0));
+                }
+                else
+                {
+                    m_delta->scale().x = std::min(m_delta->scale().x, scale.x);
+                    m_delta->scale().y = std::min(m_delta->scale().y, scale.y);
+                    m_delta->scale().z = std::min(m_delta->scale().z, scale.z);
+                }
+            }
 
             for (const auto& d : preview->dimNames)
             {
@@ -324,52 +351,113 @@ void Inference::add(const std::string localPath, FileInfo& fileInfo)
     }
 }
 
-Schema Inference::schema() const
+void Inference::aggregate()
 {
-    DimList dims;
+    m_numPoints = makeUnique<std::size_t>(0);
+    m_bounds = makeUnique<Bounds>(expander);
+
+    for (std::size_t i(0); i < m_manifest.size(); ++i)
+    {
+        const auto& f(m_manifest.get(i));
+
+        *m_numPoints += f.numPoints();
+
+        if (const Bounds* current = f.bounds())
+        {
+            m_bounds->grow(*current);
+        }
+    }
+}
+
+void Inference::makeSchema()
+{
+    pdal::Dimension::Type spatialType(pdal::Dimension::Type::Double);
+
+    if (m_delta)
+    {
+        const auto cube(bounds().cubeify());
+        const auto range(cube.width());
+
+        m_delta->offset() = cube.mid();
+
+        const Point ticks(
+                range / m_delta->scale().x,
+                range / m_delta->scale().y,
+                range / m_delta->scale().z);
+
+        auto fitsWithin([&ticks](double max)
+        {
+            return ticks.x < max && ticks.y < max && ticks.z < max;
+        });
+
+        if (fitsWithin(std::numeric_limits<uint32_t>::max()))
+        {
+            spatialType = pdal::Dimension::Type::Signed32;
+        }
+        else if (fitsWithin(std::numeric_limits<uint64_t>::max()))
+        {
+            spatialType = pdal::Dimension::Type::Signed64;
+        }
+        else
+        {
+            std::cout << "Cannot use this scale for these bounds" << std::endl;
+        }
+    }
+
+    auto isXyz([](pdal::Dimension::Id id)
+    {
+        return
+            id == pdal::Dimension::Id::X ||
+            id == pdal::Dimension::Id::Y ||
+            id == pdal::Dimension::Id::Z;
+    });
+
+    DimList dims
+    {
+        DimInfo(pdal::Dimension::Id::X, spatialType),
+        DimInfo(pdal::Dimension::Id::Y, spatialType),
+        DimInfo(pdal::Dimension::Id::Z, spatialType)
+    };
+
     for (const auto& name : m_dimVec)
     {
         const pdal::Dimension::Id id(pdal::Dimension::id(name));
 
-        pdal::Dimension::Type t;
-        try
+        if (!isXyz(id))
         {
-            t = pdal::Dimension::defaultType(id);
-        }
-        catch (pdal::pdal_error&)
-        {
-            t = pdal::Dimension::Type::Double;
-        }
+            pdal::Dimension::Type t;
+            try
+            {
+                t = pdal::Dimension::defaultType(id);
+            }
+            catch (pdal::pdal_error&)
+            {
+                t = pdal::Dimension::Type::Double;
+            }
 
-        dims.emplace_back(name, id, t);
-    }
-    return Schema(dims);
-}
-
-Bounds Inference::bounds() const
-{
-    Bounds bounds(expander);
-
-    for (std::size_t i(0); i < m_manifest.size(); ++i)
-    {
-        if (const Bounds* current = m_manifest.get(i).bounds())
-        {
-            bounds.grow(*current);
+            dims.emplace_back(name, id, t);
         }
     }
 
-    return bounds;
+    m_schema = makeUnique<Schema>(dims);
 }
 
 std::size_t Inference::numPoints() const
 {
-    std::size_t numPoints(0);
-    for (std::size_t i(0); i < m_manifest.size(); ++i)
-    {
-        numPoints += m_manifest.get(i).numPoints();
-    }
+    if (!m_numPoints) throw std::runtime_error("Inference incomplete");
+    else return *m_numPoints;
+}
 
-    return numPoints;
+Bounds Inference::bounds() const
+{
+    if (!m_bounds) throw std::runtime_error("Inference incomplete");
+    else return *m_bounds;
+}
+
+Schema Inference::schema() const
+{
+    if (!m_schema) throw std::runtime_error("Inference incomplete");
+    else return *m_schema;
 }
 
 } // namespace entwine

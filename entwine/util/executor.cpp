@@ -15,6 +15,7 @@
 #include <pdal/BufferReader.hpp>
 #include <pdal/Dimension.hpp>
 #include <pdal/Filter.hpp>
+#include <pdal/LasReader.hpp>
 #include <pdal/QuickInfo.hpp>
 #include <pdal/Reader.hpp>
 #include <pdal/SpatialReference.hpp>
@@ -197,9 +198,19 @@ std::unique_ptr<Preview> Executor::preview(
 
     if (!qi.valid() || qi.m_bounds.empty()) return result;
 
+    std::unique_ptr<Scale> scale;
     Bounds bounds(
             Point(qi.m_bounds.minx, qi.m_bounds.miny, qi.m_bounds.minz),
             Point(qi.m_bounds.maxx, qi.m_bounds.maxy, qi.m_bounds.maxz));
+
+    if (const auto lasReader = dynamic_cast<pdal::LasReader*>(reader))
+    {
+        const auto& header(lasReader->header());
+        scale = makeUnique<Scale>(
+                header.scaleX(),
+                header.scaleY(),
+                header.scaleZ());
+    }
 
     std::string srs;
 
@@ -250,7 +261,13 @@ std::unique_ptr<Preview> Executor::preview(
         srs = pdal::SpatialReference(reprojection->out()).getWKT();
     }
 
-    result.reset(new Preview(bounds, qi.m_pointCount, srs, qi.m_dimNames));
+    result = makeUnique<Preview>(
+            bounds,
+            qi.m_pointCount,
+            srs,
+            qi.m_dimNames,
+            scale.get());
+
     return result;
 }
 

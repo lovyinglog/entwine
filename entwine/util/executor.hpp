@@ -17,6 +17,7 @@
 
 #include <entwine/types/bounds.hpp>
 #include <entwine/types/structure.hpp>
+#include <entwine/util/unique.hpp>
 
 namespace pdal
 {
@@ -58,17 +59,20 @@ public:
             const Bounds& bounds,
             std::size_t numPoints,
             const std::string& srs,
-            const std::vector<std::string>& dimNames)
+            const std::vector<std::string>& dimNames,
+            const Scale* scale)
         : bounds(bounds)
         , numPoints(numPoints)
         , srs(srs)
         , dimNames(dimNames)
+        , scale(maybeClone(scale))
     { }
 
     Bounds bounds;
     std::size_t numPoints;
     std::string srs;
     std::vector<std::string> dimNames;
+    std::unique_ptr<Scale> scale;
 };
 
 class Executor

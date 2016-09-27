@@ -23,6 +23,7 @@ namespace arbiter { class Endpoint; }
 namespace cesium { class Settings; }
 
 class Bounds;
+class Delta;
 class Format;
 class Manifest;
 class Point;
@@ -46,6 +47,7 @@ public:
             const Format& format,
             const Reprojection* reprojection = nullptr,
             const Subset* subset = nullptr,
+            const Delta* delta = nullptr,
             const std::vector<double>* transformation = nullptr,
             const cesium::Settings* cesiumSettings = nullptr);
 
@@ -75,6 +77,7 @@ public:
     const Format& format() const { return *m_format; }
     const Reprojection* reprojection() const { return m_reprojection.get(); }
     const Subset* subset() const { return m_subset.get(); }
+    const Delta* delta() const { return m_delta.get(); }
     const Transformation* transformation() const
     {
         return m_transformation.get();
@@ -107,6 +110,7 @@ private:
     std::unique_ptr<Format> m_format;
     std::unique_ptr<Reprojection> m_reprojection;
     std::unique_ptr<Subset> m_subset;
+    std::unique_ptr<Delta> m_delta;
     std::unique_ptr<Transformation> m_transformation;
     std::unique_ptr<cesium::Settings> m_cesiumSettings;
 

@@ -183,6 +183,7 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
             !numPointsHint);
 
     std::unique_ptr<std::vector<double>> transformation;
+    std::unique_ptr<Delta> delta;
 
     if (manifest && needsInference)
     {
@@ -228,6 +229,8 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
         {
             transformation = makeUnique<std::vector<double>>(*t);
         }
+
+        delta = maybeClone<Delta>(inference.delta());
     }
 
     std::unique_ptr<Subset> subset;
@@ -285,6 +288,7 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
             format,
             reprojection.get(),
             subset.get(),
+            delta.get(),
             transformation.get(),
             cesiumSettings.get());
 

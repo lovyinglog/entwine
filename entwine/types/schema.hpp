@@ -149,7 +149,20 @@ inline bool operator!=(const Schema& lhs, const Schema& rhs)
 
 inline std::ostream& operator<<(std::ostream& os, const Schema& schema)
 {
-    os << schema.toJson();
+    os << "[";
+
+    for (std::size_t i(0); i < schema.dims().size(); ++i)
+    {
+        const auto& d(schema.dims()[i]);
+        os << "\n\t";
+        os <<
+            "{ \"name\": \"" << d.name() << "\"" <<
+            ", \"type\": \"" << d.typeString() << "\"" <<
+            ", \"size\": " << d.size() << " }";
+        if (i != schema.dims().size() - 1) os << ",";
+    }
+
+    os << "\n]";
     return os;
 }
 
