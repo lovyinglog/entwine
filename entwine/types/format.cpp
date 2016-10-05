@@ -43,12 +43,14 @@ namespace
 
 Format::Format(
         const Schema& schema,
+        const Delta* delta,
         bool trustHeaders,
         bool compress,
         HierarchyCompression hierarchyCompression,
         std::vector<std::string> tailFields,
         std::string srs)
     : m_schema(schema)
+    , m_delta(maybeClone(delta))
     , m_trustHeaders(trustHeaders)
     , m_compress(compress)
     , m_hierarchyCompression(hierarchyCompression)
@@ -85,9 +87,13 @@ Format::Format(
     }
 }
 
-Format::Format(const Schema& schema, const Json::Value& json)
+Format::Format(
+        const Schema& schema,
+        const Delta* delta,
+        const Json::Value& json)
     : Format(
             schema,
+            delta,
             json["trustHeaders"].asBool(),
             json["compress"].asBool(),
             hierarchyCompressionFromName(json["compress-hierarchy"].asString()),
@@ -105,9 +111,66 @@ std::unique_ptr<std::vector<char>> Format::pack(
 
     if (m_compress)
     {
-        Compressor compressor(m_schema, dataStack.size());
-        for (const char* pos : dataStack) compressor.push(pos, pointSize);
-        data = compressor.data();
+        if (!m_delta)
+        {
+            Compressor compressor(m_schema, dataStack.size());
+            for (const char* pos : dataStack) compressor.push(pos, pointSize);
+            data = compressor.data();
+        }
+        else
+        {
+            DimList dims
+            {
+                { pdal::Dimension::Id::X, pdal::Dimension::Type::Signed32 },
+                { pdal::Dimension::Id::Y, pdal::Dimension::Type::Signed32 },
+                { pdal::Dimension::Id::Z, pdal::Dimension::Type::Signed32 }
+            };
+
+            for (const auto& d : m_schema.dims())
+            {
+                if (d.name() != "X" && d.name() != "Y" && d.name() != "Z")
+                {
+                    dims.push_back(d);
+                }
+            }
+
+            Schema schema(dims);
+            Compressor compressor(schema, dataStack.size());
+            BinaryPointTable table(schema);
+            pdal::PointRef pr(table, 0);
+
+            const auto x(pdal::Dimension::Id::X);
+            const auto y(pdal::Dimension::Id::Y);
+            const auto z(pdal::Dimension::Id::Z);
+
+            const std::size_t offset(3 * sizeof(double));
+
+            int32_t i(0);
+
+            for (const char* pos : dataStack)
+            {
+                table.setPoint(pos);
+
+                i = std::llround(
+                        (pr.getFieldAs<double>(x) - m_delta->offset().x) /
+                        m_delta->scale().x);
+                compressor.push(i);
+
+                i = std::llround(
+                        (pr.getFieldAs<double>(y) - m_delta->offset().y) /
+                        m_delta->scale().y);
+                compressor.push(i);
+
+                i = std::llround(
+                        (pr.getFieldAs<double>(z) - m_delta->offset().z) /
+                        m_delta->scale().z);
+                compressor.push(i);
+
+                compressor.push(pos + offset, pointSize - offset);
+            }
+
+            data = compressor.data();
+        }
     }
     else
     {

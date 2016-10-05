@@ -98,6 +98,7 @@ Cell::PooledStack Unpacker::acquireCells(PointPool& pointPool)
 {
     if (m_format.compress())
     {
+        if (m_format.delta()) std::cout << "Acquiring with delta" << std::endl;
         auto d(Compression::decompress(*m_data, numPoints(), pointPool));
         m_data.reset();
         return d;

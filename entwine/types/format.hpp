@@ -19,6 +19,7 @@
 #include <json/json.h>
 
 #include <entwine/types/defs.hpp>
+#include <entwine/types/delta.hpp>
 #include <entwine/types/format-packing.hpp>
 #include <entwine/types/format-types.hpp>
 #include <entwine/types/point-pool.hpp>
@@ -38,6 +39,7 @@ class Format
 public:
     Format(
             const Schema& schema,
+            const Delta* delta,
             bool trustHeaders = true,
             bool compress = true,
             HierarchyCompression hierarchyCompression =
@@ -47,7 +49,30 @@ public:
             },
             std::string srs = std::string());
 
-    Format(const Schema& schema, const Json::Value& json);
+    Format(const Schema& schema, const Delta* delta, const Json::Value& json);
+
+    Format(const Format& other)
+        : m_schema(other.schema())
+        , m_delta(maybeClone(other.delta()))
+        , m_trustHeaders(other.trustHeaders())
+        , m_compress(other.compress())
+        , m_hierarchyCompression(other.hierarchyCompression())
+        , m_tailFields(other.tailFields())
+        , m_srs(other.srs())
+    { }
+
+    Format& operator=(const Format& other)
+    {
+        m_schema = other.schema();
+        m_delta = maybeClone(other.delta());
+        m_trustHeaders = other.trustHeaders();
+        m_compress = other.compress();
+        m_hierarchyCompression = other.hierarchyCompression();
+        m_tailFields = other.tailFields();
+        m_srs = other.srs();
+
+        return *this;
+    }
 
     Json::Value toJson() const
     {
@@ -79,6 +104,7 @@ public:
     }
 
     const Schema& schema() const { return m_schema; }
+    const Delta* delta() const { return m_delta.get(); }
     const TailFields& tailFields() const { return m_tailFields; }
 
     bool trustHeaders() const { return m_trustHeaders; }
@@ -91,7 +117,8 @@ public:
     }
 
 private:
-    const Schema m_schema;
+    Schema m_schema;
+    std::unique_ptr<Delta> m_delta;
 
     bool m_trustHeaders;
     bool m_compress;

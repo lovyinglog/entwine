@@ -107,10 +107,10 @@ private:
     std::unique_ptr<Structure> m_structure;
     std::unique_ptr<Structure> m_hierarchyStructure;
     std::unique_ptr<Manifest> m_manifest;
+    std::unique_ptr<Delta> m_delta;
     std::unique_ptr<Format> m_format;
     std::unique_ptr<Reprojection> m_reprojection;
     std::unique_ptr<Subset> m_subset;
-    std::unique_ptr<Delta> m_delta;
     std::unique_ptr<Transformation> m_transformation;
     std::unique_ptr<cesium::Settings> m_cesiumSettings;
 

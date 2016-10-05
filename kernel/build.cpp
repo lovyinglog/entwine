@@ -504,6 +504,12 @@ void Kernel::build(std::vector<std::string> args)
         "\tCompressed output? " << yesNo(format.compress()) <<
         std::endl;
 
+    if (const auto* delta = metadata.delta())
+    {
+        std::cout << "\tScale: " << delta->scale() << std::endl;
+        std::cout << "\tOffset: " << delta->offset() << std::endl;
+    }
+
     std::cout <<
         "Tree structure:\n" <<
         "\tNull depth: " << structure.nullDepthEnd() << "\n" <<

@@ -277,7 +277,13 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
     Structure hierarchyStructure(Hierarchy::structure(structure, subset.get()));
     const HierarchyCompression hierarchyCompression(
             compress ? HierarchyCompression::Lzma : HierarchyCompression::None);
-    Format format(*schema, trustHeaders, compress, hierarchyCompression);
+
+    Format format(
+            *schema,
+            delta.get(),
+            trustHeaders,
+            compress,
+            hierarchyCompression);
 
     const Metadata metadata(
             *boundsConforming,

@@ -266,7 +266,7 @@ bool Builder::insertPath(const Origin origin, FileInfo& info)
         return insertData(std::move(cells), origin, clipper, climber);
     });
 
-    PooledPointTable table(*m_pointPool, inserter, m_originId, origin);
+    PooledPointTable table(*m_pointPool, inserter, origin);
     return m_executor->run(table, localPath, reprojection, transformation);
 }
 
