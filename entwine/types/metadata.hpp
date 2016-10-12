@@ -14,6 +14,8 @@
 #include <string>
 #include <vector>
 
+#include <entwine/types/format-types.hpp>
+
 namespace Json { class Value; }
 
 namespace entwine
@@ -44,7 +46,9 @@ public:
             const Structure& structure,
             const Structure& hierarchyStructure,
             const Manifest& manifest,
-            const Format& format,
+            bool trustHeaders,
+            bool compress,
+            HierarchyCompression hierarchyCompress,
             const Reprojection* reprojection = nullptr,
             const Subset* subset = nullptr,
             const Delta* delta = nullptr,

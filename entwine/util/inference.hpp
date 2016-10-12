@@ -66,6 +66,7 @@ public:
     std::size_t numPoints() const;
     const Reprojection* reprojection() const { return m_reproj; }
     const Delta* delta() const { return m_delta.get(); }
+    const Bounds* deltaBounds() const { return m_deltaBounds.get(); }
 
     const std::vector<double>* transformation() const
     {
@@ -105,6 +106,7 @@ private:
     std::unique_ptr<Bounds> m_bounds;
     std::unique_ptr<Schema> m_schema;
     std::unique_ptr<Delta> m_delta;
+    std::unique_ptr<Bounds> m_deltaBounds;
 
     bool m_cesiumify;
     std::unique_ptr<Transformation> m_transformation;

@@ -278,20 +278,15 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
     const HierarchyCompression hierarchyCompression(
             compress ? HierarchyCompression::Lzma : HierarchyCompression::None);
 
-    Format format(
-            *schema,
-            delta.get(),
-            trustHeaders,
-            compress,
-            hierarchyCompression);
-
     const Metadata metadata(
             *boundsConforming,
             *schema,
             structure,
             hierarchyStructure,
             *manifest,
-            format,
+            trustHeaders,
+            compress,
+            hierarchyCompression,
             reprojection.get(),
             subset.get(),
             delta.get(),

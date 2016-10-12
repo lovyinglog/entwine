@@ -49,7 +49,9 @@ Metadata::Metadata(
         const Structure& structure,
         const Structure& hierarchyStructure,
         const Manifest& manifest,
-        const Format& format,
+        const bool trustHeaders,
+        const bool compress,
+        const HierarchyCompression hierarchyCompress,
         const Reprojection* reprojection,
         const Subset* subset,
         const Delta* delta,
@@ -63,7 +65,12 @@ Metadata::Metadata(
     , m_hierarchyStructure(makeUnique<Structure>(hierarchyStructure))
     , m_manifest(makeUnique<Manifest>(manifest))
     , m_delta(maybeClone(delta))
-    , m_format(makeUnique<Format>(format))
+    , m_format(
+            makeUnique<Format>(
+                *this,
+                trustHeaders,
+                compress,
+                hierarchyCompress))
     , m_reprojection(maybeClone(reprojection))
     , m_subset(maybeClone(subset))
     , m_transformation(maybeClone(transformation))
@@ -93,7 +100,7 @@ Metadata::Metadata(const arbiter::Endpoint& ep, const std::size_t* subsetId)
         m_delta = makeUnique<Delta>(meta["delta"]);
     }
 
-    m_format = makeUnique<Format>(*m_schema, m_delta.get(), meta["format"]);
+    m_format = makeUnique<Format>(*this, meta["format"]);
 
     if (meta.isMember("reprojection"))
     {
@@ -136,7 +143,7 @@ Metadata::Metadata(const Json::Value& json)
     , m_hierarchyStructure(makeUnique<Structure>(json["hierarchyStructure"]))
     , m_manifest()
     , m_delta(Delta::existsIn(json) ? makeUnique<Delta>(json) : nullptr)
-    , m_format(makeUnique<Format>(*m_schema, m_delta.get(), json["format"]))
+    , m_format(makeUnique<Format>(*this, json["format"]))
     , m_reprojection(json.isMember("reprojection") ?
             makeUnique<Reprojection>(json["reprojection"]) : nullptr)
     , m_subset(json.isMember("subset") ?
@@ -167,7 +174,7 @@ Metadata::Metadata(const Metadata& other)
     , m_hierarchyStructure(makeUnique<Structure>(other.hierarchyStructure()))
     , m_manifest(makeUnique<Manifest>(other.manifest()))
     , m_delta(maybeClone(other.delta()))
-    , m_format(makeUnique<Format>(other.format()))
+    , m_format(makeUnique<Format>(*this, other.format()))
     , m_reprojection(maybeClone(other.reprojection()))
     , m_subset(maybeClone(other.subset()))
     , m_transformation(maybeClone(other.transformation()))

@@ -61,7 +61,7 @@ Inference::Inference(
     : m_executor()
     , m_path(path)
     , m_tmpPath(tmpPath)
-    , m_pointPool(xyzSchema)
+    , m_pointPool(xyzSchema, nullptr)
     , m_reproj(reprojection)
     , m_threads(threads)
     , m_verbose(verbose)
@@ -90,7 +90,7 @@ Inference::Inference(
         const bool cesiumify)
     : m_executor()
     , m_tmpPath(tmpPath)
-    , m_pointPool(xyzSchema)
+    , m_pointPool(xyzSchema, nullptr)
     , m_reproj(reprojection)
     , m_threads(threads)
     , m_verbose(verbose)
@@ -343,7 +343,7 @@ void Inference::add(const std::string localPath, FileInfo& fileInfo)
         return stack;
     });
 
-    PooledPointTable table(m_pointPool, tracker);
+    NormalPooledPointTable table(m_pointPool, tracker, invalidOrigin);
 
     if (m_executor.run(table, localPath, m_reproj, m_transformation.get()))
     {
@@ -367,79 +367,52 @@ void Inference::aggregate()
             m_bounds->grow(*current);
         }
     }
+
+    if (m_delta)
+    {
+        m_delta->offset() = m_bounds->cubeify().mid();
+        m_deltaBounds = makeUnique<Bounds>(
+                Point::scale(
+                    m_bounds->min(),
+                    m_delta->scale(),
+                    m_delta->offset()),
+                Point::scale(
+                    m_bounds->max(),
+                    m_delta->scale(),
+                    m_delta->offset()));
+    }
 }
 
 void Inference::makeSchema()
 {
-    pdal::Dimension::Type spatialType(pdal::Dimension::Type::Double);
-
-    if (m_delta)
-    {
-        const auto cube(bounds().cubeify());
-        const auto range(cube.width());
-
-        m_delta->offset() = cube.mid();
-
-        const Point ticks(
-                range / m_delta->scale().x,
-                range / m_delta->scale().y,
-                range / m_delta->scale().z);
-
-        auto fitsWithin([&ticks](double max)
-        {
-            return ticks.x < max && ticks.y < max && ticks.z < max;
-        });
-
-        if (fitsWithin(std::numeric_limits<uint32_t>::max()))
-        {
-            spatialType = pdal::Dimension::Type::Signed32;
-        }
-        else if (fitsWithin(std::numeric_limits<uint64_t>::max()))
-        {
-            spatialType = pdal::Dimension::Type::Signed64;
-        }
-        else
-        {
-            std::cout << "Cannot use this scale for these bounds" << std::endl;
-        }
-    }
-
-    auto isXyz([](pdal::Dimension::Id id)
-    {
-        return
-            id == pdal::Dimension::Id::X ||
-            id == pdal::Dimension::Id::Y ||
-            id == pdal::Dimension::Id::Z;
-    });
-
-    DimList dims
-    {
-        DimInfo(pdal::Dimension::Id::X, spatialType),
-        DimInfo(pdal::Dimension::Id::Y, spatialType),
-        DimInfo(pdal::Dimension::Id::Z, spatialType)
-    };
+    DimList dims;
 
     for (const auto& name : m_dimVec)
     {
         const pdal::Dimension::Id id(pdal::Dimension::id(name));
 
-        if (!isXyz(id))
+        pdal::Dimension::Type t;
+        try
         {
-            pdal::Dimension::Type t;
-            try
-            {
-                t = pdal::Dimension::defaultType(id);
-            }
-            catch (pdal::pdal_error&)
-            {
-                t = pdal::Dimension::Type::Double;
-            }
-
-            dims.emplace_back(name, id, t);
+            t = pdal::Dimension::defaultType(id);
         }
+        catch (pdal::pdal_error&)
+        {
+            t = pdal::Dimension::Type::Double;
+        }
+
+        dims.emplace_back(name, id, t);
     }
 
     m_schema = makeUnique<Schema>(dims);
+
+    /*
+    if (const Delta* d = delta())
+    {
+        m_schema = makeUnique<Schema>(
+                Schema::deltify(m_bounds->cubeify(), *d, *m_schema));
+    }
+    */
 }
 
 std::size_t Inference::numPoints() const

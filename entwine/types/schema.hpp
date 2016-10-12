@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <vector>
@@ -19,6 +20,7 @@
 
 #include <json/json.h>
 
+#include <entwine/types/delta.hpp>
 #include <entwine/types/dim-info.hpp>
 #include <entwine/types/fixed-point-layout.hpp>
 #include <entwine/util/json.hpp>
@@ -32,7 +34,15 @@ public:
     explicit Schema(DimList dims)
         : m_dims(dims)
         , m_layout(makePointLayout(m_dims))
-    { }
+    {
+        if (
+                m_dims.at(0).name() != "X" ||
+                m_dims.at(1).name() != "Y" ||
+                m_dims.at(2).name() != "Z")
+        {
+            throw std::runtime_error("Invalid schema - must start with XYZ");
+        }
+    }
 
     explicit Schema(const Json::Value& json)
         : Schema(
@@ -82,6 +92,18 @@ public:
         return it != m_dims.end();
     }
 
+    const DimInfo& find(const std::string& name) const
+    {
+        const auto it(
+                std::find_if(
+                    m_dims.begin(),
+                    m_dims.end(),
+                    [&name](const DimInfo& d) { return d.name() == name; }));
+
+        if (it != m_dims.end()) return *it;
+        else throw std::runtime_error("Dimension not found: " + name);
+    }
+
     pdal::Dimension::Id getId(const std::string& name) const
     {
         return pdalLayout().findDim(name);
@@ -116,6 +138,87 @@ public:
                 {
                     return s + (s.size() ? ", " : "") + d.name();
                 });
+    }
+
+    bool normal() const
+    {
+        static const auto f(pdal::Dimension::BaseType::Floating);
+        return
+            pdal::Dimension::BaseType(find("X").type()) == f &&
+            pdal::Dimension::BaseType(find("Y").type()) == f &&
+            pdal::Dimension::BaseType(find("Z").type()) == f;
+    }
+
+    static Schema normalize(const Schema& s)
+    {
+        DimList dims
+        {
+            pdal::Dimension::Id::X,
+            pdal::Dimension::Id::Y,
+            pdal::Dimension::Id::Z
+        };
+
+        for (const auto& dim : s.dims())
+        {
+            if (!DimInfo::isXyz(dim)) dims.emplace_back(dim);
+        }
+
+        return Schema(dims);
+    };
+
+    static Schema deltify(
+            const Bounds& cube,
+            const Delta& delta,
+            const Schema& inSchema)
+    {
+        pdal::Dimension::Type spatialType(pdal::Dimension::Type::Double);
+
+        const auto range(cube.width());
+
+        const Point ticks(
+                range / delta.scale().x,
+                range / delta.scale().y,
+                range / delta.scale().z);
+
+        auto fitsWithin([&ticks](double max)
+        {
+            return ticks.x < max && ticks.y < max && ticks.z < max;
+        });
+
+        if (fitsWithin(std::numeric_limits<uint32_t>::max()))
+        {
+            spatialType = pdal::Dimension::Type::Signed32;
+        }
+        else if (fitsWithin(std::numeric_limits<uint64_t>::max()))
+        {
+            spatialType = pdal::Dimension::Type::Signed64;
+        }
+        else
+        {
+            std::cout << "Cannot use this scale for these bounds" << std::endl;
+        }
+
+        auto isXyz([](pdal::Dimension::Id id)
+        {
+            return
+                id == pdal::Dimension::Id::X ||
+                id == pdal::Dimension::Id::Y ||
+                id == pdal::Dimension::Id::Z;
+        });
+
+        DimList dims
+        {
+            DimInfo(pdal::Dimension::Id::X, spatialType),
+            DimInfo(pdal::Dimension::Id::Y, spatialType),
+            DimInfo(pdal::Dimension::Id::Z, spatialType)
+        };
+
+        for (const auto& dim : inSchema.dims())
+        {
+            if (!isXyz(dim.id())) dims.emplace_back(dim);
+        }
+
+        return Schema(dims);
     }
 
 private:

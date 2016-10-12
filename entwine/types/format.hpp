@@ -29,6 +29,8 @@
 namespace entwine
 {
 
+class Metadata;
+
 // The Format contains the attributes that give insight about what the tree
 // looks like at a more micro-oriented level than the Structure, which gives
 // information about the overall tree structure.  Whereas the Structure can
@@ -38,8 +40,7 @@ class Format
 {
 public:
     Format(
-            const Schema& schema,
-            const Delta* delta,
+            const Metadata& metadata,
             bool trustHeaders = true,
             bool compress = true,
             HierarchyCompression hierarchyCompression =
@@ -49,11 +50,8 @@ public:
             },
             std::string srs = std::string());
 
-    Format(const Schema& schema, const Delta* delta, const Json::Value& json);
-
-    Format(const Format& other)
-        : m_schema(other.schema())
-        , m_delta(maybeClone(other.delta()))
+    Format(const Metadata& metadata, const Format& other)
+        : m_metadata(metadata)
         , m_trustHeaders(other.trustHeaders())
         , m_compress(other.compress())
         , m_hierarchyCompression(other.hierarchyCompression())
@@ -61,18 +59,7 @@ public:
         , m_srs(other.srs())
     { }
 
-    Format& operator=(const Format& other)
-    {
-        m_schema = other.schema();
-        m_delta = maybeClone(other.delta());
-        m_trustHeaders = other.trustHeaders();
-        m_compress = other.compress();
-        m_hierarchyCompression = other.hierarchyCompression();
-        m_tailFields = other.tailFields();
-        m_srs = other.srs();
-
-        return *this;
-    }
+    Format(const Metadata& metadata, const Json::Value& json);
 
     Json::Value toJson() const
     {
@@ -103,8 +90,6 @@ public:
         return Unpacker(*this, std::move(data));
     }
 
-    const Schema& schema() const { return m_schema; }
-    const Delta* delta() const { return m_delta.get(); }
     const TailFields& tailFields() const { return m_tailFields; }
 
     bool trustHeaders() const { return m_trustHeaders; }
@@ -116,9 +101,11 @@ public:
         return m_hierarchyCompression;
     }
 
+    const Metadata& metadata() const;
+    const Schema& schema() const;
+
 private:
-    Schema m_schema;
-    std::unique_ptr<Delta> m_delta;
+    const Metadata& m_metadata;
 
     bool m_trustHeaders;
     bool m_compress;

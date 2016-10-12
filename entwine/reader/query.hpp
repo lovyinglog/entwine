@@ -16,9 +16,9 @@
 
 #include <entwine/reader/cache.hpp>
 #include <entwine/reader/reader.hpp>
+#include <entwine/types/binary-point-table.hpp>
 #include <entwine/types/dir.hpp>
 #include <entwine/types/point.hpp>
-#include <entwine/types/pooled-point-table.hpp>
 
 namespace entwine
 {

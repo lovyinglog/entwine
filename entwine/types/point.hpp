@@ -148,6 +148,30 @@ public:
                 0);
     }
 
+    static Point scale(const Point& p, const Point& scale, const Point& offset)
+    {
+        return Point(
+                (p.x - offset.x) / scale.x,
+                (p.y - offset.y) / scale.y,
+                (p.z - offset.z) / scale.z);
+    }
+
+    static Point unscale(
+            const Point& p,
+            const Point& scale,
+            const Point& offset)
+    {
+        return Point(
+                p.x * scale.x + offset.x,
+                p.y * scale.y + offset.y,
+                p.z * scale.z + offset.z);
+    }
+
+    static Point round(const Point& p)
+    {
+        return Point(std::llround(p.x), std::llround(p.y), std::llround(p.z));
+    }
+
     double x;
     double y;
     double z;
