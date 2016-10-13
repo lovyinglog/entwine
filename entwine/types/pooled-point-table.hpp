@@ -44,7 +44,7 @@ public:
         allocate();
     }
 
-    std::unique_ptr<PooledPointTable> create(
+    static std::unique_ptr<PooledPointTable> create(
             PointPool& pointPool,
             Process process,
             const Delta* delta,
@@ -55,7 +55,7 @@ public:
 
 protected:
     virtual void allocated() { }
-    virtual void preprocess() { }
+    virtual void preprocess() = 0;
 
     std::size_t outstanding() const { return m_outstanding; }
 
@@ -94,6 +94,7 @@ public:
     { }
 
 private:
+    virtual void preprocess() override { }
     virtual void allocated() override;
 };
 

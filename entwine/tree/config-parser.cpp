@@ -138,7 +138,10 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
 
     // Geometry and spatial info.
     auto boundsConforming(getBounds(jsonGeometry["bounds"]));
-    auto schema(makeUnique<Schema>(jsonGeometry["schema"]));
+    auto schema(
+            jsonGeometry["schema"].isNull() ?
+                std::unique_ptr<Schema>() :
+                makeUnique<Schema>(jsonGeometry["schema"]));
 
     std::size_t numPointsHint(jsonStructure["numPointsHint"].asUInt64());
 

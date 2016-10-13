@@ -406,13 +406,11 @@ void Inference::makeSchema()
 
     m_schema = makeUnique<Schema>(dims);
 
-    /*
     if (const Delta* d = delta())
     {
         m_schema = makeUnique<Schema>(
                 Schema::deltify(m_bounds->cubeify(), *d, *m_schema));
     }
-    */
 }
 
 std::size_t Inference::numPoints() const

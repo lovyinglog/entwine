@@ -268,8 +268,14 @@ bool Builder::insertPath(const Origin origin, FileInfo& info)
         return insertData(std::move(cells), origin, clipper, climber);
     });
 
-    PooledPointTable table(*m_pointPool, inserter, origin);
-    return m_executor->run(table, localPath, reprojection, transformation);
+    std::unique_ptr<PooledPointTable> table(
+            PooledPointTable::create(
+                *m_pointPool,
+                inserter,
+                m_metadata->delta(),
+                origin));
+
+    return m_executor->run(*table, localPath, reprojection, transformation);
 }
 
 Cell::PooledStack Builder::insertData(
