@@ -25,7 +25,6 @@ std::unique_ptr<PooledPointTable> PooledPointTable::create(
 {
     if (pointPool.schema().normal())
     {
-        std::cout << pointPool.schema() << std::endl;
         return makeUnique<NormalPooledPointTable>(pointPool, process, origin);
     }
     else
