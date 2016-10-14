@@ -84,8 +84,16 @@ Json::Value ConfigParser::unflatten(Json::Value in)
 
     // These few will be written to different keys then their unflattened
     // versions.
-    if (in.isMember("input")) out["input"]["manifest"] = in["input"];
-    if (in.isMember("output")) out["output"]["path"] = in["output"];
+    if (in.isMember("input") && !in["input"].isObject())
+    {
+        out["input"]["manifest"] = in["input"];
+    }
+
+    if (in.isMember("output") && !in["output"].isObject())
+    {
+        out["output"]["path"] = in["output"];
+    }
+
     if (in.isMember("reprojection"))
     {
         out["geometry"]["reproject"] = in["reprojection"];
@@ -131,6 +139,7 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
     const std::string tmpPath(jsonOutput["tmp"].asString());
     const bool compress(jsonOutput["compress"].asUInt64());
     const bool force(jsonOutput["force"].asBool());
+    const bool absolute(config["absolute"].asBool());
 
     // Indexing parameters.
     const bool trustHeaders(jsonInput["trustHeaders"].asBool());
@@ -180,10 +189,7 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
                 });
     }
 
-    const bool needsInference(
-            !boundsConforming ||
-            !schema->pointSize() ||
-            !numPointsHint);
+    const bool needsInference(!boundsConforming || !schema || !numPointsHint);
 
     std::unique_ptr<std::vector<double>> transformation;
     std::unique_ptr<Delta> delta;
@@ -198,6 +204,7 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
                 true,
                 reprojection.get(),
                 trustHeaders,
+                !absolute,
                 arbiter.get(),
                 !!cesiumSettings);
 
@@ -210,9 +217,21 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
             std::cout << "Inferred: " << inference.bounds() << std::endl;
         }
 
-        if (!schema->pointSize())
+        if (!schema)
         {
             auto dims(inference.schema().dims());
+            const std::size_t pointIdSize([&manifest]()
+            {
+                std::size_t max(0);
+                for (std::size_t i(0); i < manifest->size(); ++i)
+                {
+                    max = std::max(max, manifest->get(i).numPoints());
+                }
+
+                if (max <= std::numeric_limits<uint32_t>::max()) return 4;
+                else return 8;
+            }());
+
             const std::size_t originSize([&manifest]()
             {
                 if (manifest->size() <= std::numeric_limits<uint32_t>::max())
@@ -221,7 +240,8 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
                     return 8;
             }());
 
-            dims.emplace_back("Origin", "unsigned", originSize);
+            dims.emplace_back("PointId", "unsigned", pointIdSize);
+            dims.emplace_back("OriginId", "unsigned", originSize);
 
             schema = makeUnique<Schema>(dims);
         }
@@ -233,7 +253,7 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
             transformation = makeUnique<std::vector<double>>(*t);
         }
 
-        delta = maybeClone<Delta>(inference.delta());
+        if (!absolute) delta = maybeClone<Delta>(inference.delta());
     }
 
     std::unique_ptr<Subset> subset;

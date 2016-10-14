@@ -214,11 +214,12 @@ bool Builder::insertPath(const Origin origin, FileInfo& info)
 
     const Reprojection* reprojection(m_metadata->reprojection());
     const Transformation* transformation(m_metadata->transformation());
+    const Delta* delta(m_metadata->delta());
 
     // If we don't have an inferred bounds, check against the actual file.
     if (!info.bounds())
     {
-        if (auto pre = m_executor->preview(localPath, reprojection))
+        if (auto pre = m_executor->preview(localPath, reprojection, delta))
         {
             if (!m_sequence->checkBounds(origin, pre->bounds, pre->numPoints))
             {
@@ -325,6 +326,7 @@ Cell::PooledStack Builder::insertData(
         }
         else
         {
+            std::cout << "R " << point << std::endl;
             reject(cell);
             pointStats.addOutOfBounds();
         }

@@ -20,6 +20,8 @@
 namespace entwine
 {
 
+class Delta;
+
 class Bounds
 {
 public:
@@ -228,6 +230,7 @@ public:
 
     void grow(const Bounds& bounds);
     void grow(const Point& p);
+    void shrink(const Bounds& bounds);
 
     bool isCubic() const
     {
@@ -255,6 +258,8 @@ public:
                     std::floor(m_mid.y + radius),
                     std::floor(m_mid.z + radius)));
     }
+
+    Bounds deltify(const Delta& delta) const;
 
     Bounds growBy(double ratio) const;
 

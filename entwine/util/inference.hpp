@@ -39,6 +39,7 @@ public:
             bool verbose = false,
             const Reprojection* reprojection = nullptr,
             bool trustHeaders = true,
+            bool allowDelta = true,
             arbiter::Arbiter* arbiter = nullptr);
 
     Inference(
@@ -48,6 +49,7 @@ public:
             bool verbose = false,
             const Reprojection* reprojection = nullptr,
             bool trustHeaders = true,
+            bool allowDelta = true,
             arbiter::Arbiter* arbiter = nullptr,
             bool cesiumify = false);
 
@@ -90,6 +92,7 @@ private:
     std::size_t m_threads;
     bool m_verbose;
     bool m_trustHeaders;
+    bool m_allowDelta;
     bool m_done;
 
     std::unique_ptr<Pool> m_pool;

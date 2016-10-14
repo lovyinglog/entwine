@@ -34,15 +34,7 @@ public:
     explicit Schema(DimList dims)
         : m_dims(dims)
         , m_layout(makePointLayout(m_dims))
-    {
-        if (
-                m_dims.at(0).name() != "X" ||
-                m_dims.at(1).name() != "Y" ||
-                m_dims.at(2).name() != "Z")
-        {
-            throw std::runtime_error("Invalid schema - must start with XYZ");
-        }
-    }
+    { }
 
     explicit Schema(const Json::Value& json)
         : Schema(
@@ -144,9 +136,9 @@ public:
     {
         static const auto f(pdal::Dimension::BaseType::Floating);
         return
-            pdal::Dimension::BaseType(find("X").type()) == f &&
-            pdal::Dimension::BaseType(find("Y").type()) == f &&
-            pdal::Dimension::BaseType(find("Z").type()) == f;
+            pdal::Dimension::base(find("X").type()) == f &&
+            pdal::Dimension::base(find("Y").type()) == f &&
+            pdal::Dimension::base(find("Z").type()) == f;
     }
 
     static Schema normalize(const Schema& s)

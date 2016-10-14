@@ -28,10 +28,14 @@ public:
     // can return any that do not need to be kept for reuse.
     using Process = std::function<Cell::PooledStack(Cell::PooledStack)>;
 
-    PooledPointTable(PointPool& pointPool, Process process, Origin origin)
-        : pdal::StreamPointTable(pointPool.schema().pdalLayout())
+    PooledPointTable(
+            PointPool& pointPool,
+            const Schema& schema,
+            Process process,
+            Origin origin)
+        : pdal::StreamPointTable(schema.pdalLayout())
         , m_pointPool(pointPool)
-        , m_schema(pointPool.schema())
+        , m_inSchema(schema)
         , m_process(process)
         , m_dataNodes(pointPool.dataPool())
         , m_cellNodes(pointPool.cellPool())
@@ -43,6 +47,15 @@ public:
         m_refs.reserve(capacity());
         allocate();
     }
+
+    PooledPointTable(
+            PointPool& pointPool,
+            Process process,
+            Origin origin)
+        : PooledPointTable(pointPool, pointPool.schema(), process, origin)
+    { }
+
+    virtual ~PooledPointTable() { }
 
     static std::unique_ptr<PooledPointTable> create(
             PointPool& pointPool,
@@ -56,11 +69,13 @@ public:
 protected:
     virtual void allocated() { }
     virtual void preprocess() = 0;
+    virtual const Schema& outSchema() const { return m_inSchema; }
 
+    std::size_t index() const { return m_index; }
     std::size_t outstanding() const { return m_outstanding; }
 
     PointPool& m_pointPool;
-    const Schema& m_schema;
+    const Schema& m_inSchema;
     Process m_process;
 
     Data::PooledStack m_dataNodes;
@@ -79,7 +94,6 @@ private:
 
     const Origin m_origin;
     std::size_t m_index;
-
     std::size_t m_outstanding;
 };
 
@@ -91,11 +105,13 @@ public:
             PooledPointTable::Process process,
             Origin origin)
         : PooledPointTable(pointPool, process, origin)
-    { }
+    {
+        allocated();
+    }
 
 private:
-    virtual void preprocess() override { }
     virtual void allocated() override;
+    virtual void preprocess() override { }
 };
 
 class ConvertingPooledPointTable : public PooledPointTable
@@ -103,25 +119,31 @@ class ConvertingPooledPointTable : public PooledPointTable
 public:
     ConvertingPooledPointTable(
             PointPool& pointPool,
+            std::unique_ptr<Schema> normalizedSchema,
             PooledPointTable::Process process,
             const Delta& delta,
             Origin origin)
-        : PooledPointTable(pointPool, process, origin)
+        : PooledPointTable(pointPool, *normalizedSchema, process, origin)
         , m_delta(delta)
-        , m_preSchema(Schema::normalize(pointPool.schema()))
-        , m_preData(m_preSchema.pointSize() * capacity(), 0)
+        , m_preSchema(std::move(normalizedSchema))
+        , m_preData(m_preSchema->pointSize() * capacity(), 0)
     {
         for (std::size_t i(0); i < capacity(); ++i)
         {
-            m_refs.push_back(m_preData.data() + i * m_preSchema.pointSize());
+            m_refs.push_back(m_preData.data() + i * m_preSchema->pointSize());
         }
     }
 
 private:
     virtual void preprocess() override;
 
+    virtual const Schema& outSchema() const override
+    {
+        return m_pointPool.schema();
+    }
+
     const Delta& m_delta;
-    const Schema m_preSchema;
+    std::unique_ptr<Schema> m_preSchema;
     std::vector<char> m_preData;
 };
 

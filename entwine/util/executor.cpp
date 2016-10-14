@@ -21,6 +21,7 @@
 #include <pdal/SpatialReference.hpp>
 #include <pdal/StageFactory.hpp>
 
+#include <entwine/types/delta.hpp>
 #include <entwine/types/pooled-point-table.hpp>
 #include <entwine/types/reprojection.hpp>
 #include <entwine/types/schema.hpp>
@@ -181,7 +182,8 @@ bool Executor::good(const std::string path) const
 
 std::unique_ptr<Preview> Executor::preview(
         const std::string path,
-        const Reprojection* reprojection)
+        const Reprojection* reprojection,
+        const Delta* delta)
 {
     std::unique_ptr<Preview> result;
 
@@ -260,6 +262,8 @@ std::unique_ptr<Preview> Executor::preview(
         auto lock(getLock());
         srs = pdal::SpatialReference(reprojection->out()).getWKT();
     }
+
+    if (delta) bounds = bounds.deltify(*delta);
 
     result = makeUnique<Preview>(
             bounds,

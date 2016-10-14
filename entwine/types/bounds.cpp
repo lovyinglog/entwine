@@ -15,6 +15,7 @@
 #include <numeric>
 #include <iostream>
 
+#include <entwine/types/delta.hpp>
 #include <entwine/util/unique.hpp>
 
 namespace entwine
@@ -123,6 +124,13 @@ void Bounds::grow(const Point& p)
     setMid();
 }
 
+void Bounds::shrink(const Bounds& other)
+{
+    m_min = Point::max(m_min, other.min());
+    m_max = Point::min(m_max, other.max());
+    setMid();
+}
+
 Bounds Bounds::growBy(double ratio) const
 {
     const Point delta(
@@ -131,6 +139,13 @@ Bounds Bounds::growBy(double ratio) const
             (m_max.z - m_mid.z) * ratio);
 
     return Bounds(m_min - delta, m_max + delta);
+}
+
+Bounds Bounds::deltify(const Delta& delta) const
+{
+    return Bounds(
+            Point::scale(min(), delta.scale(), delta.offset()),
+            Point::scale(max(), delta.scale(), delta.offset()));
 }
 
 std::ostream& operator<<(std::ostream& os, const Bounds& bounds)

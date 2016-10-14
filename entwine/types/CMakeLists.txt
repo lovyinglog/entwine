@@ -18,6 +18,7 @@ set(
     "${BASE}/binary-point-table.hpp"
     "${BASE}/bounds.hpp"
     "${BASE}/defs.hpp"
+    "${BASE}/delta.hpp"
     "${BASE}/dim-info.hpp"
     "${BASE}/dir.hpp"
     "${BASE}/fixed-point-layout.hpp"

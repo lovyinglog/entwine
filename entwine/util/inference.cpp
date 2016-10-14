@@ -57,6 +57,7 @@ Inference::Inference(
         const bool verbose,
         const Reprojection* reprojection,
         const bool trustHeaders,
+        const bool allowDelta,
         arbiter::Arbiter* arbiter)
     : m_executor()
     , m_path(path)
@@ -66,6 +67,7 @@ Inference::Inference(
     , m_threads(threads)
     , m_verbose(verbose)
     , m_trustHeaders(trustHeaders)
+    , m_allowDelta(allowDelta)
     , m_done(false)
     , m_ownedArbiter(arbiter ? nullptr : new arbiter::Arbiter())
     , m_arbiter(arbiter ? arbiter : m_ownedArbiter.get())
@@ -86,6 +88,7 @@ Inference::Inference(
         const bool verbose,
         const Reprojection* reprojection,
         const bool trustHeaders,
+        const bool allowDelta,
         arbiter::Arbiter* arbiter,
         const bool cesiumify)
     : m_executor()
@@ -95,6 +98,7 @@ Inference::Inference(
     , m_threads(threads)
     , m_verbose(verbose)
     , m_trustHeaders(trustHeaders)
+    , m_allowDelta(allowDelta)
     , m_done(false)
     , m_ownedArbiter(arbiter ? nullptr : new arbiter::Arbiter())
     , m_arbiter(arbiter ? arbiter : m_ownedArbiter.get())
@@ -304,7 +308,10 @@ void Inference::add(const std::string localPath, FileInfo& fileInfo)
 
                 if (!m_delta)
                 {
-                    m_delta = makeUnique<Delta>(scale, Offset(0, 0, 0));
+                    if (m_allowDelta)
+                    {
+                        m_delta = makeUnique<Delta>(scale, Offset(0, 0, 0));
+                    }
                 }
                 else
                 {
@@ -371,15 +378,7 @@ void Inference::aggregate()
     if (m_delta)
     {
         m_delta->offset() = m_bounds->cubeify().mid();
-        m_deltaBounds = makeUnique<Bounds>(
-                Point::scale(
-                    m_bounds->min(),
-                    m_delta->scale(),
-                    m_delta->offset()),
-                Point::scale(
-                    m_bounds->max(),
-                    m_delta->scale(),
-                    m_delta->offset()));
+        m_deltaBounds = makeUnique<Bounds>(m_bounds->deltify(*m_delta));
     }
 }
 
@@ -422,7 +421,11 @@ std::size_t Inference::numPoints() const
 Bounds Inference::bounds() const
 {
     if (!m_bounds) throw std::runtime_error("Inference incomplete");
-    else return *m_bounds;
+    else
+    {
+        if (m_deltaBounds) return *m_deltaBounds;
+        else return *m_bounds;
+    }
 }
 
 Schema Inference::schema() const

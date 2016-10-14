@@ -28,6 +28,7 @@ namespace pdal
 namespace entwine
 {
 
+class Delta;
 class PooledPointTable;
 class Reprojection;
 class Schema;
@@ -95,7 +96,8 @@ public:
     // reading the whole file.
     std::unique_ptr<Preview> preview(
             std::string path,
-            const Reprojection* reprojection);
+            const Reprojection* reprojection,
+            const Delta* delta = nullptr);
 
     std::string getSrsString(std::string input) const;
 
