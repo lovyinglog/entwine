@@ -223,7 +223,7 @@ public:
                 std::to_string(toIntegral(dir)));
     }
 
-    bool exists() const { return Point::exists(m_min) && Point::exists(m_max); }
+    bool exists() const { return Point::exists(m_min) || Point::exists(m_max); }
     bool is3d() const { return m_min.z || m_max.z; }
 
     Json::Value toJson() const;

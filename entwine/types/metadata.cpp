@@ -95,10 +95,7 @@ Metadata::Metadata(const arbiter::Endpoint& ep, const std::size_t* subsetId)
 
     m_manifest = makeUnique<Manifest>(manifest);
 
-    if (Delta::existsIn(meta))
-    {
-        m_delta = makeUnique<Delta>(meta["delta"]);
-    }
+    if (Delta::existsIn(meta)) m_delta = makeUnique<Delta>(meta);
 
     m_format = makeUnique<Format>(*this, meta["format"]);
 

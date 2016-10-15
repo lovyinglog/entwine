@@ -306,18 +306,13 @@ void Inference::add(const std::string localPath, FileInfo& fileInfo)
                             "Invalid scale at " + fileInfo.path());
                 }
 
-                if (!m_delta)
+                if (m_delta)
                 {
-                    if (m_allowDelta)
-                    {
-                        m_delta = makeUnique<Delta>(scale, Offset(0, 0, 0));
-                    }
+                    m_delta->scale() = Point::min(m_delta->scale(), scale);
                 }
-                else
+                else if (m_allowDelta)
                 {
-                    m_delta->scale().x = std::min(m_delta->scale().x, scale.x);
-                    m_delta->scale().y = std::min(m_delta->scale().y, scale.y);
-                    m_delta->scale().z = std::min(m_delta->scale().z, scale.z);
+                    m_delta = makeUnique<Delta>(scale, Offset(0, 0, 0));
                 }
             }
 
