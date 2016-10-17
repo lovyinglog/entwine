@@ -41,7 +41,7 @@ class Metadata
 
 public:
     Metadata(
-            const Bounds& boundsConforming,
+            const Bounds& boundsNative,
             const Schema& schema,
             const Structure& structure,
             const Structure& hierarchyStructure,
@@ -67,6 +67,7 @@ public:
 
     void save(const arbiter::Endpoint& endpoint) const;
 
+    const Bounds& boundsNative() const { return *m_boundsNative; }
     const Bounds& boundsConforming() const { return *m_boundsConforming; }
     const Bounds& boundsEpsilon() const { return *m_boundsEpsilon; }
     const Bounds& bounds() const { return *m_bounds; }
@@ -99,11 +100,15 @@ public:
     Json::Value toJson() const;
 
 private:
+    Metadata& operator=(const Metadata& other);
+
     // These are aggregated as the Builder runs.
     Manifest& manifest() { return *m_manifest; }
     Format& format() { return *m_format; }
     std::vector<std::string>& errors() { return m_errors; }
 
+    // The native bounds here is the only one without scale/offset applied.
+    std::unique_ptr<Bounds> m_boundsNative;
     std::unique_ptr<Bounds> m_boundsConforming;
     std::unique_ptr<Bounds> m_boundsEpsilon;
     std::unique_ptr<Bounds> m_bounds;

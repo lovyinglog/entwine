@@ -37,7 +37,7 @@ public:
 
     static bool existsIn(const Json::Value& json)
     {
-        return json.isMember("scale") && json.isMember("offset");
+        return json.isMember("scale") || json.isMember("offset");
     }
 
     const Scale& scale() const { return m_scale; }

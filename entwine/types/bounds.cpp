@@ -141,11 +141,63 @@ Bounds Bounds::growBy(double ratio) const
     return Bounds(m_min - delta, m_max + delta);
 }
 
+Bounds Bounds::deltify(const Delta* delta) const
+{
+    if (delta) return deltify(*delta);
+    else return *this;
+}
+
 Bounds Bounds::deltify(const Delta& delta) const
 {
     return Bounds(
             Point::scale(min(), delta.scale(), delta.offset()),
             Point::scale(max(), delta.scale(), delta.offset()));
+}
+
+Bounds Bounds::cubeify(const Delta* delta) const
+{
+    if (delta) return cubeify(*delta);
+
+    const double xDist(m_max.x - m_min.x);
+    const double yDist(m_max.y - m_min.y);
+    const double zDist(m_max.z - m_min.z);
+
+    const double maxDist(
+            1 + std::ceil(std::max(std::max(xDist, yDist), zDist)));
+
+    const std::size_t rawRadius(std::ceil(maxDist / 2.0));
+    const double radius((rawRadius + 10) / 10 * 10);
+
+    return Bounds(
+            Point(
+                std::floor(m_mid.x - radius),
+                std::floor(m_mid.y - radius),
+                std::floor(m_mid.z - radius)),
+            Point(
+                std::ceil(m_mid.x + radius),
+                std::ceil(m_mid.y + radius),
+                std::ceil(m_mid.z + radius)));
+}
+
+Bounds Bounds::cubeify(const Delta& delta) const
+{
+    const double maxDist(
+            1 + std::ceil(std::max({ width(), depth(), height() })));
+
+    const std::size_t rawRadius(std::ceil(maxDist / 2.0));
+    const double radius(10 + (rawRadius + 10) / 10 * 10);
+
+    const auto& s(delta.scale());
+    const Point neg(
+            Point::apply(
+                [](double v) { return std::floor(v); },
+                Point(-radius / s.x, -radius / s.y, -radius / s.z)));
+    const Point pos(
+            Point::apply(
+                [](double v) { return std::ceil(v); },
+                Point( radius / s.x,  radius / s.y,  radius / s.z)));
+
+    return Bounds(neg, pos);
 }
 
 std::ostream& operator<<(std::ostream& os, const Bounds& bounds)

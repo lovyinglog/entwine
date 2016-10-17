@@ -194,6 +194,8 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
     std::unique_ptr<std::vector<double>> transformation;
     std::unique_ptr<Delta> delta;
 
+    if (Delta::existsIn(config)) delta = makeUnique<Delta>(config);
+
     if (manifest && needsInference)
     {
         std::cout << "Performing dataset inference..." << std::endl;
@@ -211,10 +213,25 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
         inference.go();
         manifest.reset(new Manifest(inference.manifest()));
 
+        if (!absolute && inference.delta())
+        {
+            if (!delta) delta = makeUnique<Delta>();
+
+            if (!config.isMember("scale"))
+            {
+                delta->scale() = inference.delta()->scale();
+            }
+
+            if (!config.isMember("offset"))
+            {
+                delta->offset() = inference.delta()->offset();
+            }
+        }
+
         if (!boundsConforming)
         {
-            boundsConforming.reset(new Bounds(inference.bounds()));
-            std::cout << "Inferred: " << inference.bounds() << std::endl;
+            boundsConforming.reset(new Bounds(inference.nativeBounds()));
+            std::cout << "Inferred: " << inference.nativeBounds() << std::endl;
         }
 
         if (!schema)
@@ -252,15 +269,13 @@ std::unique_ptr<Builder> ConfigParser::getBuilder(
         {
             transformation = makeUnique<std::vector<double>>(*t);
         }
-
-        if (!absolute) delta = maybeClone<Delta>(inference.delta());
     }
 
     std::unique_ptr<Subset> subset;
 
     if (config.isMember("subset"))
     {
-        Bounds cube(boundsConforming->cubeify());
+        Bounds cube(boundsConforming->cubeify(delta.get()));
         subset = makeUnique<Subset>(cube, config["subset"]);
 
         const std::size_t configNullDepth(

@@ -102,7 +102,7 @@ public:
             const Bounds& queryBounds,
             std::size_t depthBegin,
             std::size_t depthEnd,
-            double scale,
+            const Point& scale,
             const Point& offset);
 
     // Returns true if next() should be called again.  If false is returned,
@@ -145,7 +145,7 @@ protected:
     bool m_done;
 
     const Schema& m_outSchema;
-    const double m_scale;
+    const Point m_scale;
     const Point m_offset;
 
     BinaryPointTable m_table;

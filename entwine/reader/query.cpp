@@ -38,7 +38,7 @@ Query::Query(
         const Bounds& queryBounds,
         const std::size_t depthBegin,
         const std::size_t depthEnd,
-        const double scale,
+        const Point& scale,
         const Point& offset)
     : m_reader(reader)
     , m_structure(m_reader.metadata().structure())
@@ -231,11 +231,9 @@ bool Query::processPoint(std::vector<char>& buffer, const PointInfo& info)
             {
                 double d(m_pointRef.getFieldAs<double>(dim.id()));
 
-                if (isX)        d -= m_offset.x;
-                else if (isY)   d -= m_offset.y;
-                else            d -= m_offset.z;
-
-                if (m_scale) d /= m_scale;
+                if (isX)        { d -= m_offset.x; d /= m_scale.x; }
+                else if (isY)   { d -= m_offset.y; d /= m_scale.y; }
+                else            { d -= m_offset.z; d /= m_scale.z; }
 
                 switch (dim.type())
                 {

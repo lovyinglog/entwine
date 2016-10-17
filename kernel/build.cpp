@@ -124,6 +124,9 @@ namespace
             "\t\tIf set, absolute positioning will be used, even if values\n"
             "\t\tfor scale/offset can be inferred.\n\n"
 
+            "\t-s <scale>\n"
+            "\t\tSet a scale factor for indexed output.\n\n"
+
             "\t-s <subset-number> <subset-total>\n"
             "\t\tBuild only a portion of the index.  If output paths are\n"
             "\t\tall the same, 'merge' should be run after all subsets are\n"
@@ -215,7 +218,7 @@ namespace
         Json::Value json;
 
         json["input"]["manifest"] = Json::Value::null;
-        json["input"]["threads"] = 9;
+        json["input"]["threads"] = 8;
         json["input"]["trustHeaders"] = true;
 
         json["output"]["path"] = Json::Value::null;
@@ -343,19 +346,27 @@ void Kernel::build(std::vector<std::string> args)
         }
         else if (arg == "-s")
         {
-            if (a + 2 < args.size())
+            if (++a < args.size())
             {
-                ++a;
-                const Json::UInt64 id(std::stoul(args[a]));
-                ++a;
-                const Json::UInt64 of(std::stoul(args[a]));
+                // If there's only one following argument, then this is a
+                // scale specification.  Otherwise, it's a subset specification.
+                if (a + 1 >= args.size() || args[a + 1].front() == '-')
+                {
+                    const double d(std::stod(args[a]));
+                    for (int i(0); i < 3; ++i) json["scale"].append(d);
+                }
+                else
+                {
+                    const Json::UInt64 id(std::stoul(args[a]));
+                    const Json::UInt64 of(std::stoul(args[++a]));
 
-                json["subset"]["id"] = id;
-                json["subset"]["of"] = of;
+                    json["subset"]["id"] = id;
+                    json["subset"]["of"] = of;
+                }
             }
             else
             {
-                throw std::runtime_error("Invalid subset specification");
+                throw std::runtime_error("Invalid -s specification");
             }
         }
         else if (arg == "-u")
@@ -517,7 +528,7 @@ void Kernel::build(std::vector<std::string> args)
 
     std::cout <<
         "Geometry:\n" <<
-        "\tConforming bounds: " << metadata.boundsConforming() << "\n" <<
+        "\tNative bounds: " << metadata.boundsNative() << "\n" <<
         "\tCubic bounds: " << metadata.bounds() << "\n" <<
         "\tReprojection: " << getReprojString(reprojection) << "\n" <<
         "\tStoring dimensions: " << getDimensionString(schema) <<

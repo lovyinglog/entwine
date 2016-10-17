@@ -64,7 +64,7 @@ public:
 
     const Manifest& manifest() const { return m_manifest; }
     Schema schema() const;
-    Bounds bounds() const;
+    Bounds nativeBounds() const;
     std::size_t numPoints() const;
     const Reprojection* reprojection() const { return m_reproj; }
     const Delta* delta() const { return m_delta.get(); }

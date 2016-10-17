@@ -41,10 +41,16 @@ namespace
 
         return v;
     }
+
+    std::string getPostfix(const std::size_t* subsetId)
+    {
+        if (subsetId) return "-" + std::to_string(*subsetId);
+        else return "";
+    }
 }
 
 Metadata::Metadata(
-        const Bounds& boundsConforming,
+        const Bounds& boundsNative,
         const Schema& schema,
         const Structure& structure,
         const Structure& hierarchyStructure,
@@ -57,9 +63,10 @@ Metadata::Metadata(
         const Delta* delta,
         const Transformation* transformation,
         const cesium::Settings* cesiumSettings)
-    : m_boundsConforming(makeUnique<Bounds>(boundsConforming))
+    : m_boundsNative(makeUnique<Bounds>(boundsNative))
+    , m_boundsConforming(makeUnique<Bounds>(m_boundsNative->deltify(delta)))
     , m_boundsEpsilon(makeUnique<Bounds>(m_boundsConforming->growBy(epsilon)))
-    , m_bounds(makeUnique<Bounds>(m_boundsConforming->cubeify()))
+    , m_bounds(makeUnique<Bounds>(m_boundsNative->cubeify(delta)))
     , m_schema(makeUnique<Schema>(schema))
     , m_structure(makeUnique<Structure>(structure))
     , m_hierarchyStructure(makeUnique<Structure>(hierarchyStructure))
@@ -79,60 +86,21 @@ Metadata::Metadata(
 { }
 
 Metadata::Metadata(const arbiter::Endpoint& ep, const std::size_t* subsetId)
+    : Metadata(([&ep, subsetId]()
+    {
+        return parse(ep.get("entwine" + getPostfix(subsetId)));
+    })())
 {
-    const std::string pf(
-            (subsetId ? "-" + std::to_string(*subsetId) : ""));
-
-    const Json::Value meta(parse(ep.get("entwine" + pf)));
-    const Json::Value manifest(parse(ep.get("entwine-manifest" + pf)));
-
-    m_boundsConforming = makeUnique<Bounds>(meta["boundsConforming"]);
-    m_boundsEpsilon = makeUnique<Bounds>(m_boundsConforming->growBy(epsilon));
-    m_bounds = makeUnique<Bounds>(meta["bounds"]);
-    m_schema = makeUnique<Schema>(meta["schema"]);
-    m_structure = makeUnique<Structure>(meta["structure"]);
-    m_hierarchyStructure = makeUnique<Structure>(meta["hierarchyStructure"]);
-
+    const Json::Value manifest(
+            parse(ep.get("entwine-manifest" + getPostfix(subsetId))));
     m_manifest = makeUnique<Manifest>(manifest);
-
-    if (Delta::existsIn(meta)) m_delta = makeUnique<Delta>(meta);
-
-    m_format = makeUnique<Format>(*this, meta["format"]);
-
-    if (meta.isMember("reprojection"))
-    {
-        m_reprojection = makeUnique<Reprojection>(meta["reprojection"]);
-    }
-
-    if (meta.isMember("subset"))
-    {
-        m_subset = makeUnique<Subset>(*m_bounds, meta["subset"]);
-    }
-
-    if (meta.isMember("transformation"))
-    {
-        m_transformation = makeUnique<Transformation>();
-
-        for (const auto& v : meta["transformation"])
-        {
-            m_transformation->push_back(v.asDouble());
-        }
-    }
-
-    if (meta.isMember("formats") && meta["formats"].isMember("cesium"))
-    {
-        m_cesiumSettings =
-            makeUnique<cesium::Settings>(meta["formats"]["cesium"]);
-    }
-
-    if (meta.isMember("errors"))
-    {
-        m_errors = fromJsonArray(meta["errors"]);
-    }
 }
 
 Metadata::Metadata(const Json::Value& json)
-    : m_boundsConforming(makeUnique<Bounds>(json["boundsConforming"]))
+    : m_boundsNative(
+            makeUnique<Bounds>(json.isMember("boundsNative") ?
+                json["boundsNative"] : json["boundsConforming"]))
+    , m_boundsConforming(makeUnique<Bounds>(json["boundsConforming"]))
     , m_boundsEpsilon(makeUnique<Bounds>(m_boundsConforming->growBy(epsilon)))
     , m_bounds(makeUnique<Bounds>(json["bounds"]))
     , m_schema(makeUnique<Schema>(json["schema"]))
@@ -163,7 +131,8 @@ Metadata::Metadata(const Json::Value& json)
 }
 
 Metadata::Metadata(const Metadata& other)
-    : m_boundsConforming(makeUnique<Bounds>(other.boundsConforming()))
+    : m_boundsNative(makeUnique<Bounds>(other.boundsNative()))
+    , m_boundsConforming(makeUnique<Bounds>(other.boundsConforming()))
     , m_boundsEpsilon(makeUnique<Bounds>(other.boundsEpsilon()))
     , m_bounds(makeUnique<Bounds>(other.bounds()))
     , m_schema(makeUnique<Schema>(other.schema()))
@@ -185,6 +154,7 @@ Json::Value Metadata::toJson() const
 {
     Json::Value json;
 
+    json["boundsNative"] = m_boundsNative->toJson();
     json["boundsConforming"] = m_boundsConforming->toJson();
     json["bounds"] = m_bounds->toJson();
     json["schema"] = m_schema->toJson();

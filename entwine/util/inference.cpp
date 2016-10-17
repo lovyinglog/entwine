@@ -195,7 +195,7 @@ void Inference::go()
     {
         throw std::runtime_error("No schema dimensions found");
     }
-    else if (bounds() == expander)
+    else if (nativeBounds() == expander)
     {
         throw std::runtime_error("No bounds found");
     }
@@ -243,7 +243,7 @@ Transformation Inference::calcTransformation()
     // i' = "east" = j' cross k'
 
     // Determine normalized vector k'.
-    const Point p(bounds().mid());
+    const Point p(nativeBounds().mid());
     const Vector up(Vector::normalize(p));
 
     // Project the north pole vector onto k'.
@@ -270,7 +270,8 @@ Transformation Inference::calcTransformation()
 
     // Then, translate around our current best guess at a center point.  This
     // should be close enough to the origin for reasonable precision.
-    const Bounds tentativeCenter(m_executor.transform(bounds(), rotation));
+    const Bounds tentativeCenter(
+            m_executor.transform(nativeBounds(), rotation));
     const std::vector<double> translation
     {
         1, 0, 0, -tentativeCenter.mid().x,
@@ -372,8 +373,7 @@ void Inference::aggregate()
 
     if (m_delta)
     {
-        m_delta->offset() = m_bounds->cubeify().mid();
-        m_deltaBounds = makeUnique<Bounds>(m_bounds->deltify(*m_delta));
+        m_delta->offset() = Point::round(m_bounds->mid());
     }
 }
 
@@ -402,8 +402,8 @@ void Inference::makeSchema()
 
     if (const Delta* d = delta())
     {
-        m_schema = makeUnique<Schema>(
-                Schema::deltify(m_bounds->cubeify(), *d, *m_schema));
+        const Bounds cube(m_bounds->cubeify(*d));
+        m_schema = makeUnique<Schema>(Schema::deltify(cube, *d, *m_schema));
     }
 }
 
@@ -413,14 +413,10 @@ std::size_t Inference::numPoints() const
     else return *m_numPoints;
 }
 
-Bounds Inference::bounds() const
+Bounds Inference::nativeBounds() const
 {
     if (!m_bounds) throw std::runtime_error("Inference incomplete");
-    else
-    {
-        if (m_deltaBounds) return *m_deltaBounds;
-        else return *m_bounds;
-    }
+    return *m_bounds;
 }
 
 Schema Inference::schema() const

@@ -167,6 +167,11 @@ public:
                 p.z * scale.z + offset.z);
     }
 
+    template<typename Op> static Point apply(Op op, const Point& p)
+    {
+        return Point(op(p.x), op(p.y), op(p.z));
+    }
+
     static Point round(const Point& p)
     {
         return Point(std::llround(p.x), std::llround(p.y), std::llround(p.z));

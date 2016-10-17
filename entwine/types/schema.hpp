@@ -159,18 +159,16 @@ public:
     };
 
     static Schema deltify(
-            const Bounds& cube,
+            const Bounds& scaledCube,
             const Delta& delta,
             const Schema& inSchema)
     {
         pdal::Dimension::Type spatialType(pdal::Dimension::Type::Double);
 
-        const auto range(cube.width());
-
         const Point ticks(
-                range / delta.scale().x,
-                range / delta.scale().y,
-                range / delta.scale().z);
+                scaledCube.width() / delta.scale().x,
+                scaledCube.depth() / delta.scale().y,
+                scaledCube.height() / delta.scale().z);
 
         auto fitsWithin([&ticks](double max)
         {
